@@ -10,6 +10,12 @@ import { shader_vertex_source } from "./vertex_shader.js";
 /** Linear Algebra Library
  */ import { LIBS } from './libs.js'
 
+/** 3D Vertices
+ */ import { triangle_vertex, triangle_faces } from "./Meshes/triangle.js";
+    import { cube_vertex, cube_faces } from "./Meshes/cube.js";
+    import { colored_cube_vertex, colored_cube_faces } from "./Meshes/uniformly_colored_cube.js";
+    import * as polygon from './Meshes/polygon.js';
+
 /** Utility functions
  */import {
     create_control_panel,
@@ -98,7 +104,7 @@ function main() {
       throw new Error(`Could not compile ${SHADER_PROGRAM}. \n\n ${info}`);
     }
 
-/** We assign a javascript variable the position of a `GLSL` variable in the `WebGLProgram`
+/** We assign a javascript variable with the position of a `GLSL` variable in the `WebGLProgram`
  *  `getAttribLocation()` for `attribute` variables,
  *  and `getUniformLocation()` for `unfiform` variables.
  *  Those methods return a `GLint`
@@ -124,35 +130,14 @@ function main() {
   /** We set `SHADER_PROGRAM` which is a `WebGLProgram` as part of the current rendering state.
    */ GL.useProgram(SHADER_PROGRAM);
 
-  /** The Triangle
-   *
-   *  The total screen is represendted by those coordinates:
-   *
-   *  ------(0, 1)-----
-   *  (-1,0)(0, 0)(1,0)
-   *  ------(0,-1)-----
-   *
-   * (0,0) is the center of the screen
-   *
-   * Now we define the triangle vertices
-   */
-let triangle_vertex = [
-// Vertex 1
-    -1, 1, 0,  // X Y Z
-     0, 0, 1,  // RGB blue
-// Vertex 2
-     1,-1, 0,  // X Y Z
-     1, 1, 0,  // RGB Yellow
-// Vertex 3
-     1, 1, 0,  // X Y Z
-     1, 0, 0   // RGB Red
-  ]
+let vertex_array = colored_cube_vertex;
+
 
 /** VBO - Vertex Buffer Object
- *  We first create a buffer named `TRIANGLE_VERTEX`
- */ let TRIANGLE_VERTEX = GL.createBuffer();
+ *  We first create a buffer named `VERTEX_ARRAY`
+ */ let VERTEX_ARRAY = GL.createBuffer();
 
-/** We bind the buffer `TRIANGLE_VERTEX` to `GL.ARRAY_BUFFER`,
+/** We bind the buffer `VERTEX_ARRAY` to `GL.ARRAY_BUFFER`,
  *  for WebGL to know how to handle that buffer.
  *
  *  GL.ARRAY_BUFFER is the binding point (target) indicating
@@ -160,39 +145,39 @@ let triangle_vertex = [
  *  - vertex coordinates
  *  - texture coordinate data
  *  - or vertex color data
- */ GL.bindBuffer(GL.ARRAY_BUFFER, TRIANGLE_VERTEX);
+ */ GL.bindBuffer(GL.ARRAY_BUFFER, VERTEX_ARRAY);
 
 
 /** Intializing and creating the buffer object's data store or data buffer
  *
- *  new Float32Array(triangle_vertex) is used to create an array of 32bits floats from the `triangle_vertex` array.
+ *  new Float32Array(vertex_array) is used to create an array of 32bits floats from the `vertex_array` array.
  *
  *  GL.STATIC_DRAW is a `GLenum` specifying the intended usage pattern of the data store for optimization purposes.
  *  Here the enum means: The contents are intended to be specified once by the application,
  *  and used many times as the source for WebGL drawing and image specification commands.
  */ GL.bufferData(
         GL.ARRAY_BUFFER,
-        new Float32Array(triangle_vertex),
+        new Float32Array(vertex_array),
         GL.STATIC_DRAW
     );
 
 /** Faces
  * 
- *  under triangle_faces we will specify the verticies we want to use to render a triangle.
- *  We will use the verticies 0, 1, 2 connected together to represent the triangle.
- */ let triangle_faces = [0, 1, 2];
+ *  under faces_array we will specify the vertices we want to connect.
+ */ let faces_array = colored_cube_faces;
 
-/** create a buffer named TRIANGLE_FACES
- */ let TRIANGLE_FACES = GL.createBuffer();
 
-/** We bind `TRIANGLE_FACES` to `GL.ELEMENT_ARRAY_BUFFER` target,
+/** create a buffer named FACES_ARRAY
+ */ let FACES_ARRAY = GL.createBuffer();
+
+/** We bind `FACES_ARRAY` to `GL.ELEMENT_ARRAY_BUFFER` target,
  *  for WebGL to know how to handle that buffer.
- */ GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, TRIANGLE_FACES);
+ */ GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, FACES_ARRAY);
 
 /** Now we can add to the buffer the array of indicies:
  */ GL.bufferData(
       GL.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array(triangle_faces),
+      new Uint16Array(faces_array),
       GL.STATIC_DRAW
     );
 
@@ -221,6 +206,7 @@ let triangle_vertex = [
 /** Set clear value for depth buffer
  */ GL.clearDepth(1.0);
 
+let drawMesh = function() {GL.drawElements(GL.TRIANGLES, 6*2*3, GL.UNSIGNED_SHORT, 0); };
 
 let Xinc = 0;
 let Yinc = 1;
@@ -252,8 +238,7 @@ let Zinc = 0;
        GL.uniformMatrix4fv(_Vmatrix, false, VIEWMATRIX);
        GL.uniformMatrix4fv(_Mmatrix, false, MOVEMATRIX);
 
-
-      GL.bindBuffer(GL.ARRAY_BUFFER, TRIANGLE_VERTEX);
+      GL.bindBuffer(GL.ARRAY_BUFFER, VERTEX_ARRAY);
 
     /** GL.vertexAttribPointer(attributeIndex, size, type, normalized, stride, offset)
      *
@@ -288,9 +273,10 @@ let Zinc = 0;
     GL.vertexAttribPointer(_position, 3, GL.FLOAT, false, 4*(3+3), 0);
     GL.vertexAttribPointer(_color, 3, GL.FLOAT, false, 4*(3+3), 3*4);
 
-    GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, TRIANGLE_FACES);
+    GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, FACES_ARRAY);
 
-    /** drawElements(mode, count, type, offset) Renders primitives from an arry of data
+    /** drawMesh() call drawElements();
+     *  drawElements(mode, count, type, offset) Renders primitives from an arry of data
      *
      *  `mode` a GLenum specifying the type of primitive to render in our case:
      *  GL.TRIANGLES is triangle from a group of 3 vertices.
@@ -301,7 +287,8 @@ let Zinc = 0;
      *  `type` a GLenum specifying the type of the values in the element array buffer.
      *
      *  `offset` a GLintptr specifying a byte offset in the element array buffer.
-     */ GL.drawElements(GL.TRIANGLES, 3, GL.UNSIGNED_SHORT, 0);
+     */
+    drawMesh();
 
     /** Empties the different buffers
      */ GL.flush();
@@ -312,6 +299,16 @@ let Zinc = 0;
 
   (function init_panel() {
     const panel = create_control_panel();
+
+    const subPanel = document.createElement('div');
+    subPanel.id = 'subPanel';
+    panel.appendChild( subPanel );
+
+    function setSubPanel(panel) {
+      if ( !subPanel ) return;
+      subPanel.innerHTML = ''
+      subPanel.appendChild(panel);
+    }
 
     function stop_loop() {
       isRendering = false;
@@ -332,28 +329,134 @@ let Zinc = 0;
       start_loop();
     }
 
-    function changeZ(e){
-      LIBS.translateZ(VIEWMATRIX, -e.target.value);
+    function changeZ(value){
+      LIBS.translateZ(VIEWMATRIX,-value);
     }
 
-    function changeVfov(e) {
-      PROJMATRIX = LIBS.get_projection(e.target.value, canvas.width / canvas.height, 1, 100); 
+    function changeVfov(value) {
+      PROJMATRIX = LIBS.get_projection(value, canvas.width / canvas.height, 1, 100); 
     }
 
+    function bindBuffers() {
+      GL.bufferData(
+        GL.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(faces_array),
+        GL.STATIC_DRAW
+      );
+
+      GL.bufferData(
+        GL.ARRAY_BUFFER,
+        new Float32Array(vertex_array),
+        GL.STATIC_DRAW
+      );
+
+    }
+
+    function setMeshTriangle() {
+      vertex_array = triangle_vertex;
+      faces_array = triangle_faces;
+      // 6 faces * 2 triangle per face * 3 points per face.
+      drawMesh = function() { GL.drawElements(GL.TRIANGLES, 3, GL.UNSIGNED_SHORT, 0) };
+      bindBuffers();
+    }
+    function setMeshCube() {
+      vertex_array = cube_vertex;
+      faces_array = cube_faces;
+      drawMesh = function() { GL.drawElements(GL.TRIANGLES, 6*2*3, GL.UNSIGNED_SHORT, 0) };
+      bindBuffers();
+    }
+    function setMeshColoredCube() {
+      vertex_array = colored_cube_vertex;
+      faces_array = colored_cube_faces;
+      drawMesh = function() { GL.drawElements(GL.TRIANGLES, 6*2*3, GL.UNSIGNED_SHORT, 0) };
+      bindBuffers();
+    }
+    let mesh_div = document.createElement('div');
+    create_btn(mesh_div, 'Triangle', () => {
+      setMeshTriangle()
+      setSubPanel(false);
+    });
+    create_btn(mesh_div, 'Cube', () => {
+      setMeshCube();
+      setSubPanel(false);
+    });
+    create_btn(mesh_div, 'Colored Cube', () => {
+      setMeshColoredCube();
+      setSubPanel(false);
+    });
+    panel.appendChild(mesh_div);
+
+
+    //____CONE
+    let cone = {
+      vertices: 8,
+      height: 1,
+      radius: 1
+    }
+
+    function setMeshCone(obj) {
+      cone = {...cone, ...obj}
+
+      //base triangles
+      const a = polygon.generate_polygon_vertices(cone.vertices, 0, cone.radius);
+      //top to radius triangles
+      const b = polygon.generate_polygon_vertices(cone.vertices, cone.height, cone.radius);
+      vertex_array = a.concat(b);
+      faces_array = polygon.generate_polygon_faces(cone.vertices * 2);
+      drawMesh = function() {GL.drawElements(GL.TRIANGLES, cone.vertices*2*3, GL.UNSIGNED_SHORT, 0); };
+      bindBuffers();
+
+    }
+
+    const cone_panel = document.createElement('div');
+    create_slider(cone_panel, 3, 100, cone.vertices, 'Cone Vertices', (value) => setMeshCone( {vertices: value} ));
+    create_slider(cone_panel, 1, 50, cone.height, 'Cone Height', (value) => setMeshCone( {height: value} ));
+    create_slider(cone_panel, 1, 20, cone.radius, 'Cone Radius', (value) => setMeshCone( {radius: value} ));
+
+    create_btn(mesh_div, 'Cone', () => {
+      setMeshCone(cone);
+      setSubPanel(cone_panel);
+    });
+
+    const polygon_panel = document.createElement('div');
+
+
+    //____POLYGON
+    let poly = {
+      vertices: 8,
+      radius: 1
+    }
+
+    function setMeshPolygon(obj) {
+      poly = {...poly, ...obj};
+      vertex_array = polygon.generate_polygon_vertices(poly.vertices, 0, poly.radius);
+      faces_array = polygon.generate_polygon_faces(poly.vertices);
+      drawMesh = function() {GL.drawElements(GL.TRIANGLES, poly.vertices*3, GL.UNSIGNED_SHORT, 0); };
+      bindBuffers();
+    }
+
+    create_slider(polygon_panel, 3, 140, poly.vertices, 'Vertices', (value) => setMeshPolygon( {vertices: value} ));
+    create_slider(polygon_panel, 1, 20, poly.radius, 'Radius', (value) => setMeshPolygon( {radius: value} ), 0.0001);
+
+    create_btn(mesh_div, 'Polygon', () => {
+      setMeshPolygon(poly);
+      setSubPanel(polygon_panel);
+    });
+
+    //____PANEL
     create_btn(panel, 'stop loop', stop_loop);
     create_btn(panel, 'start loop', start_loop);
     create_btn(panel, 'restart loop', restart_loop);
     create_slider(panel, 0, 100, 2, 'Z-view', changeZ)
     create_slider(panel, 10, 90, 40, 'V-fov', changeVfov);
-    create_slider(panel, 0, 20, 0, 'Rotation-X', (e) => Xinc = e.target.value);
-    create_slider(panel, 0, 20, 1, 'Rotation-Y', (e) => Yinc = e.target.value);
-    create_slider(panel, 0, 20, 0, 'Rotation-Z', (e) => Zinc = e.target.value);
+    create_slider(panel, 0, 20, 0, 'Rotation-X', (value) => Xinc = value);
+    create_slider(panel, 0, 20, 1, 'Rotation-Y', (value) => Yinc = value);
+    create_slider(panel, 0, 20, 0, 'Rotation-Z', (value) => Zinc = value);
 
-    const checkbox = create_checkbox(panel, 'antialiasing', 'enable antialiasing', toggle_antialiasing);
-  
     function toggle_antialiasing() {
       isAntialiasing = checkbox.checked;
     }
+    const checkbox = create_checkbox(panel, 'antialiasing', 'enable antialiasing', toggle_antialiasing);
 
   }() );
 

@@ -34,7 +34,7 @@ export function create_checkbox(parent, id, labelText, callback) {
     return checkbox;
 }
 
-export function create_slider(parent, min, max, value, name, callback) {
+export function create_slider(parent, min, max, value, name, callback, step=1) {
     const div = document.createElement('div');
 
     const slider = document.createElement('input');
@@ -43,7 +43,10 @@ export function create_slider(parent, min, max, value, name, callback) {
     slider.max = max;
     slider.value = value;
     slider.id = name;
-    slider.addEventListener('input', callback);
+    slider.step = step;
+    slider.addEventListener('input', (e) => {
+        callback(e.target.value);
+    });
 
     const label = document.createElement('label');
     label.setAttribute('for', name);
