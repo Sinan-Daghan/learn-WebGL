@@ -7,12 +7,15 @@
 import { shader_fragment_source } from "./fragment_shader.js";
 import { shader_vertex_source } from "./vertex_shader.js";
 
+/** Linear Algebra Library
+ */ import { LIBS } from './libs.js'
 
 /** Utility functions
  */import {
     create_control_panel,
     create_btn,
-    create_checkbox
+    create_checkbox,
+    create_slider
   } from "./utils.js";
 
 
@@ -95,16 +98,17 @@ function main() {
       throw new Error(`Could not compile ${SHADER_PROGRAM}. \n\n ${info}`);
     }
 
-  /** We link the `GLSL` `position` variable to the JavScript `_position` variable.
-   *  getAttribLocation() return the location of an attribute variable in a given `WebGLProgram`
-   *  the returned value is a `GLint`
-   *  We do the same for `_color`
-   */
-  let _position = GL.getAttribLocation(SHADER_PROGRAM, 'position');
-  console.log( '🛟 _position 🛟', _position );
+/** We assign a javascript variable the position of a `GLSL` variable in the `WebGLProgram`
+ *  `getAttribLocation()` for `attribute` variables,
+ *  and `getUniformLocation()` for `unfiform` variables.
+ *  Those methods return a `GLint`
+ *
+ */ let _position = GL.getAttribLocation(SHADER_PROGRAM, 'position');
+    let _color    = GL.getAttribLocation(SHADER_PROGRAM, 'color');
 
-  let _color = GL.getAttribLocation(SHADER_PROGRAM, 'color');
-  console.log( '🛟 _color 🛟', _color );
+    let _Pmatrix = GL.getUniformLocation(SHADER_PROGRAM, 'Pmatrix');
+    let _Vmatrix = GL.getUniformLocation(SHADER_PROGRAM, 'Vmatrix');
+    let _Mmatrix = GL.getUniformLocation(SHADER_PROGRAM, 'Mmatrix');
 
   /** `enableVertexAttribArray()`
    *
@@ -134,16 +138,15 @@ function main() {
    */
 let triangle_vertex = [
 // Vertex 1
-    -1,  1,  // X and Y
-     0,0,1,  // RGB blue
+    -1, 1, 0,  // X Y Z
+     0, 0, 1,  // RGB blue
 // Vertex 2
-     1, -1,  // X and Y
-     1,1,0,  // RGB Yellow
+     1,-1, 0,  // X Y Z
+     1, 1, 0,  // RGB Yellow
 // Vertex 3
-     1,  1,  // X and Y
-     1,0,0   // RGB Red
+     1, 1, 0,  // X Y Z
+     1, 0, 0   // RGB Red
   ]
-
 
 /** VBO - Vertex Buffer Object
  *  We first create a buffer named `TRIANGLE_VERTEX`
@@ -193,20 +196,62 @@ let triangle_vertex = [
       GL.STATIC_DRAW
     );
 
+/** Projection Matrix
+ *  more details in libs.js `40` is the angle in degrees of the camera.
+ *  The camera only show pixels between zMin and zMax.
+ */ let PROJMATRIX = LIBS.get_projection(40, canvas.width / canvas.height, 1, 100);
+
+/** Movement and View Matrices initialized with an identity 4*4 matrix
+ */ let MOVEMATRIX = LIBS.get_I4();
+    let VIEWMATRIX = LIBS.get_I4();
+
+    LIBS.translateZ(VIEWMATRIX, -5);
+
 /**
  *  We specify the color used to clear the buffers,
  *  this color will be used by GL.clear()
  *  here use a transparent RGBA color.
  */ GL.clearColor(0.0, 0.0, 0.0, 0.0);
 
+/** Enabling Depth Buffer Test
+ */ GL.enable(GL.DEPTH_TEST);
+/** Set the function for comparing incoming pixel depth to the current depth buffer value.
+ *  GL.LEQUAL means pass if the value is Less or Equal to the depth buffer value.
+ */ GL.depthFunc(GL.LEQUAL);
+/** Set clear value for depth buffer
+ */ GL.clearDepth(1.0);
+
+
+let Xinc = 0;
+let Yinc = 1;
+let Zinc = 0;
+
+ let time_prev = 0;
 
 /** Recusive rendering function:
- */ let rendering_loop = function() {
+ */ let rendering_loop = function(time) {
       if(! isRendering  ) return;
+
+      let dAngle = 0.0005*(time - time_prev);
+      LIBS.rotateX(MOVEMATRIX, dAngle * Xinc);
+      LIBS.rotateY(MOVEMATRIX, dAngle * Yinc);
+      LIBS.rotateZ(MOVEMATRIX, dAngle * Zinc);
+
+      time_prev = time;
 
   /** We set the viewport which specifies the affine transformation of x and y from normalized device coordinates to window coordinates.
    */ GL.viewport(0, 0, canvas.width, canvas.height);
-      GL.clear(GL.COLOR_BUFFER_BIT);
+   
+   /** We clear the canvas and the buffer depth
+    */ GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+
+   /** pass the 3rd argument that represent a square matrix of `fv` floating point values
+    *  to a shader variable, the location of the variable is stored in the first argument
+    *  and was retrieved earlier.
+    */ GL.uniformMatrix4fv(_Pmatrix, false, PROJMATRIX);
+       GL.uniformMatrix4fv(_Vmatrix, false, VIEWMATRIX);
+       GL.uniformMatrix4fv(_Mmatrix, false, MOVEMATRIX);
+
 
       GL.bindBuffer(GL.ARRAY_BUFFER, TRIANGLE_VERTEX);
 
@@ -214,34 +259,34 @@ let triangle_vertex = [
      *
      * `attributeIndex` specifies the index of the attribute variable in the
      * vertex shader to which the data buffer will be bound in WebGL it corresponds to
-     * the location of the attribute variable as obtained using the `GL.getAttribLocation`.
+     * the location of the attribute variable as obtained using the `GL.getAttribLocation()`.
      *
      * `size` indicates the number of component per vertex attribute
      * if the attribute represent a 2D coordinates (x, y) the size would be 2.
      *
      * `type` represent the type of each component in the attribute array
-     * in WebGL the mose common types inclue `GL.FLOAT` `GL.INT`, or `GL.UNSIGNED_BYTE`.
+     * in WebGL the most common types inclue `GL.FLOAT` `GL.INT`, or `GL.UNSIGNED_BYTE`.
      *
      * `normalized` indicated wether fixed point data should be normalized ('true')
      * or ('false') meaning that the floating-point value should be converted directly when
      * beign accessed. Often this parameter is set to 'false'.
      *
      * `stride` specifies the number of bytes between consecutive attributes.
-     * The stride in the both method calls is set to `4 *(2+3)` why ?
+     * The stride in the both method calls is set to `4 * (n+3)` why ?
      * because we have components of `32` bit floating point values which is equal to 4 bytes.
-     * Then (2+3) is used because in the array we have 5 components per attribute:
-     * 2 components for the x,and y coordinates
-     * 3 component for the RGB values
-     * The result is `5 components * 4 bytes`.
+     * Then (n+3) is used because in the array we have (n+3) components per attribute:
+     * n components for number of coordinates X, Y, ...
+     * 3 components for the RGB values
+     * The result is `(n+3) components * 4 bytes`.
      *
      * `offset` indicate the byte offset from the beginning of the buffer to the first
      * attribute in the buffer in the second call of the function we have this parameter set to
-     * `2 * 4` this means that the color attribute start 2 components into the vertex.
-     * Because the first 2 components are the position attributes (x and y coordinates).
-     * And why `2 * 4` ? Because it is `2 components * 4 bytes`.
+     * `n * 4` this means that the color attribute start `n` components into the vertex.
+     * Because the first `n` components are the position attributes (X, Y, ... coordinates).
+     * And why `n * 4` ? Because it is `2 components * 4 bytes`.
      */
-    GL.vertexAttribPointer(_position, 2, GL.FLOAT, false, 4*(2+3), 0);
-    GL.vertexAttribPointer(_color, 3, GL.FLOAT, false, 4*(2+3), 2*4);
+    GL.vertexAttribPointer(_position, 3, GL.FLOAT, false, 4*(3+3), 0);
+    GL.vertexAttribPointer(_color, 3, GL.FLOAT, false, 4*(3+3), 3*4);
 
     GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, TRIANGLE_FACES);
 
@@ -263,7 +308,7 @@ let triangle_vertex = [
 
     window.requestAnimationFrame(rendering_loop);
   };
-  rendering_loop();
+  rendering_loop(0);
 
   (function init_panel() {
     const panel = create_control_panel();
@@ -273,16 +318,36 @@ let triangle_vertex = [
       GL.clearColor(1.0, 1.0, 1.0, 1.0);
       GL.clear(GL.COLOR_BUFFER_BIT);
       GL.flush();
+      time_prev = 0;
     }
   
     function start_loop() {
       isRendering = true;
       GL.clearColor(0.0, 0.0, 0.0, 0.0);
-      rendering_loop();
+      rendering_loop(0);
+    }
+
+    function restart_loop() {
+      stop_loop();
+      start_loop();
+    }
+
+    function changeZ(e){
+      LIBS.translateZ(VIEWMATRIX, -e.target.value);
+    }
+
+    function changeVfov(e) {
+      PROJMATRIX = LIBS.get_projection(e.target.value, canvas.width / canvas.height, 1, 100); 
     }
 
     create_btn(panel, 'stop loop', stop_loop);
     create_btn(panel, 'start loop', start_loop);
+    create_btn(panel, 'restart loop', restart_loop);
+    create_slider(panel, 0, 100, 2, 'Z-view', changeZ)
+    create_slider(panel, 10, 90, 40, 'V-fov', changeVfov);
+    create_slider(panel, 0, 20, 0, 'Rotation-X', (e) => Xinc = e.target.value);
+    create_slider(panel, 0, 20, 1, 'Rotation-Y', (e) => Yinc = e.target.value);
+    create_slider(panel, 0, 20, 0, 'Rotation-Z', (e) => Zinc = e.target.value);
 
     const checkbox = create_checkbox(panel, 'antialiasing', 'enable antialiasing', toggle_antialiasing);
   

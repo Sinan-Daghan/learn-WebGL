@@ -1,0 +1,74 @@
+export const LIBS = {
+    degToRad: function(angle) {
+        return(angle * Math.PI / 180);
+    }
+    ,
+    get_projection: function(angle, a,zMin, zMax) {
+        var tan = Math.tan(LIBS.degToRad(0.5 * angle)),
+        A = -(zMax + zMin) / (zMax - zMin),
+        B = (-2 * zMax * zMin) / (zMax - zMin);
+
+        return (
+            [
+                0.5/tan ,0        , 0, 0,
+                0       ,0.5*a/tan, 0, 0,
+                0       ,0        , A,-1,
+                0       ,0        , B ,0
+            ]
+        )
+    },
+    get_I4: function() {
+        return (
+            [
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ]
+        )
+    }
+    ,
+// Matricies to totate a matrice `m` around X, Y, Z axes
+// Computations are faster with 1D array and can be easily passed to WebGL 
+    rotateX: function(m, angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const mv0=m[0], mv4=m[4], mv8=m[8];
+        m[0]=c*m[0]-s*m[1];
+        m[4]=c*m[4]-s*m[5];
+        m[8]=c*m[8]-s*m[9];
+
+        m[1]=c*m[1]+s*mv0;
+        m[5]=c*m[5]+s*mv4;
+        m[9]=c*m[9]+s*mv8;
+    }
+    ,
+    rotateY: function(m, angle) {
+        let c = Math.cos(angle);
+        let s = Math.sin(angle);
+        let mv0=m[0], mv4=m[4], mv8=m[8];
+        m[0]=c*m[0]+s*m[2];
+        m[4]=c*m[4]+s*m[6];
+        m[8]=c*m[8]+s*m[10];
+    
+        m[2]=c*m[2]-s*mv0;
+        m[6]=c*m[6]-s*mv4;
+        m[10]=c*m[10]-s*mv8;
+    }
+    ,
+    rotateZ: function(m, angle) {
+        let c = Math.cos(angle);
+        let s = Math.sin(angle);
+        let mv0=m[0], mv4=m[4], mv8=m[8];
+        m[0]=c*m[0]-s*m[1];
+        m[4]=c*m[4]-s*m[5];
+        m[8]=c*m[8]-s*m[9];
+    
+        m[1]=c*m[1]+s*mv0;
+        m[5]=c*m[5]+s*mv4;
+        m[9]=c*m[9]+s*mv8;
+    },
+    translateZ: function(m, t){
+        m[14]= t;
+    }
+}

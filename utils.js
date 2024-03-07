@@ -34,12 +34,23 @@ export function create_checkbox(parent, id, labelText, callback) {
     return checkbox;
 }
 
-export function create_slider(parent, min, max, value) {
+export function create_slider(parent, min, max, value, name, callback) {
+    const div = document.createElement('div');
+
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.min = min;
     slider.max = max;
     slider.value = value;
+    slider.id = name;
+    slider.addEventListener('input', callback);
 
-    parent.appendChild(slider);
+    const label = document.createElement('label');
+    label.setAttribute('for', name);
+    label.innerText = name;
+
+    div.appendChild(label);
+    div.appendChild(slider);
+
+    parent.appendChild(div);
 }
