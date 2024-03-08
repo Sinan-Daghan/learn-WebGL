@@ -1,4 +1,4 @@
-// 8 vertices of the cuve + RGB color per vertex;
+// 8 vertices of the cube + RGB color per vertex;
 export var cube_vertex = [
     // vertex
    -1, -1, -1,

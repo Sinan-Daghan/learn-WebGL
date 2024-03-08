@@ -57,3 +57,43 @@ export function create_slider(parent, min, max, value, name, callback, step=1) {
 
     parent.appendChild(div);
 }
+
+export function add_mouse_events(canvas, angles) {
+
+    let drag=false;
+
+    let x_prev, y_prev;
+
+    const mouseDownHandler = (e) => {
+        drag = true;
+
+        x_prev = e.pageX;
+        y_prev = e.pageY
+
+        e.preventDefault();
+        return false;
+    }
+
+    const mouseUpHandler = () => {
+        drag = false;
+    };
+
+    const mouseMoveHandler = (e) => {
+        if (! drag ) return false;
+
+        let dX = e.pageX - x_prev;
+        let dY = e.pageY - y_prev;
+
+        angles.THETA += dX * 2 * Math.PI  / canvas.width;
+        angles.PHI += dY * 2 * Math.PI  / canvas.height;
+        x_prev = e.pageX;
+        y_prev = e.pageY;
+    }
+
+
+    canvas.addEventListener('mousedown', mouseDownHandler, false);
+    canvas.addEventListener('mouseup', mouseUpHandler, false);
+    canvas.addEventListener('mouseout', mouseUpHandler, false);
+    canvas.addEventListener('mousemove', mouseMoveHandler, false);
+
+}

@@ -4,8 +4,8 @@
  *  written in `GLSL` and executed on the GPU
  *  We have a `vertex shader` and a `fragment shader` both declared as strings.
  */
-import { shader_fragment_source } from "./fragment_shader.js";
-import { shader_vertex_source } from "./vertex_shader.js";
+import { shader_fragment_source } from "./Shaders/fragment_shader.js";
+import { shader_vertex_source } from "./Shaders/vertex_shader.js";
 
 /** Linear Algebra Library
  */ import { LIBS } from './libs.js'
@@ -21,7 +21,8 @@ import { shader_vertex_source } from "./vertex_shader.js";
     create_control_panel,
     create_btn,
     create_checkbox,
-    create_slider
+    create_slider,
+    add_mouse_events
   } from "./utils.js";
 
 
@@ -30,9 +31,11 @@ import { shader_vertex_source } from "./vertex_shader.js";
 /** Boolean for enabling anitaliasing
  */ let isAntialiasing = false;
 
+let canvas;
+
 function main() {
 
-    let canvas = document.getElementById('canvas');
+    canvas = document.getElementById('canvas');
     canvas.width = window.innerWidth * 0.7;
     canvas.height = window.innerHeight;
 
@@ -192,6 +195,12 @@ let vertex_array = colored_cube_vertex;
 
     LIBS.translateZ(VIEWMATRIX, -5);
 
+let angles = {
+  THETA: 0,
+  PHI: 0
+}
+add_mouse_events(canvas, angles);
+
 /**
  *  We specify the color used to clear the buffers,
  *  this color will be used by GL.clear()
@@ -222,6 +231,10 @@ let Zinc = 0;
       LIBS.rotateX(MOVEMATRIX, dAngle * Xinc);
       LIBS.rotateY(MOVEMATRIX, dAngle * Yinc);
       LIBS.rotateZ(MOVEMATRIX, dAngle * Zinc);
+
+      // LIBS.set_I4(MOVEMATRIX);
+      // LIBS.rotateY(MOVEMATRIX, angles.THETA);
+      // LIBS.rotateX(MOVEMATRIX, angles.PHI)
 
       time_prev = time;
 
